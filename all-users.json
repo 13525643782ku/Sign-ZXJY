@@ -12,14 +12,14 @@
     "address": "河南省濮阳市清丰县巩营乡库家全羊汤",
     "longitude": "115.332428",
     "latitude": "35.981663",
-    "pushmode": null,
+    "pushmode": "2",
     "pushdata": {
       "Ding": {
         "Secret": null,
         "Token": null
       },
       "PushPlus": {
-        "Token": null
+        "Token": "32ad61501de94de78fda5ebef1b9b2af"
       },
       "Server_Turbo": {
         "Token": null
