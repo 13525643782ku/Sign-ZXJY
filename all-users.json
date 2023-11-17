@@ -6,7 +6,7 @@
     "name": "宋羽彤",
     "phone": "15083280917",
     "password": "Syt482X..",
-    "deviceId": "iqoo7",
+    "deviceId": "Vivo|V2141A|13",
     "dToken": "2zjy74qowg5nipc9s86thb3xrfkdav0m1lue",
     "modify_coordinates": true,
     "address": "河南省濮阳市清丰县巩营乡库家全羊汤",
@@ -40,7 +40,7 @@
     "name": "程云清",
     "phone": "15518853665",
     "password": "wa518528",
-    "deviceId": "oneplus9",
+    "deviceId": "OnePlus|MT2110|10",
     "dToken": "n0mzfoe8g6kuq437st2arpvhx1jbidcw9y5l",
     "modify_coordinates": true,
     "address": "河南省安阳市内黄县长庆路长庆园超市",
@@ -66,5 +66,108 @@
         "Receiver": null
       }
     }
+  },
+    {
+    "enabled": true,
+    "adddate": "2023-11-17 09:28:51",
+    "enddate": "2024-05-15 09:28:51",
+    "name": "库宇",
+    "phone": "13525643782",
+    "password": "13525643782ku",
+    "deviceId": "Vivo|V2136A|13",
+    "dToken": "href27da1yqwv5uk46im3sz90njox8ptglbc",
+    "modify_coordinates": true,
+    "address": "河南省濮阳市清丰县巩营乡库家全羊汤",
+    "longitude": "115.332428",
+    "latitude": "35.981663",
+    "pushmode": "2",
+    "pushdata": {
+      "Ding": {
+        "Secret": null,
+        "Token": null
+      },
+      "PushPlus": {
+        "Token": "078ca26dd0df40399732164bee199312"
+      },
+      "Server_Turbo": {
+        "Token": null
+      },
+      "Email": {
+        "Send": null,
+        "Password": null,
+        "Server_Address": null,
+        "Smtp_Port": null,
+        "Receiver": null
+      }
+    }
+  },
+    {
+    "enabled": true,
+    "adddate": "2023-11-17 09:31:24",
+    "enddate": "2024-05-15 09:31:24",
+    "name": "安雪亮",
+    "phone": "15039959013",
+    "password": "84265qaz@",
+    "deviceId": "Redmi|M2012K11AC|13",
+    "dToken": "sr81hit90a2f6kmwldqucxoe7gn3zybv4j5p",
+    "modify_coordinates": true,
+    "address": "河南省濮阳市清丰县巩营乡库家全羊汤",
+    "longitude": "115.332428",
+    "latitude": "35.981663",
+    "pushmode": "2",
+    "pushdata": {
+      "Ding": {
+        "Secret": null,
+        "Token": null
+      },
+      "PushPlus": {
+        "Token": "bee9a8e52cff4136b52f4b62c906887d"
+      },
+      "Server_Turbo": {
+        "Token": null
+      },
+      "Email": {
+        "Send": null,
+        "Password": null,
+        "Server_Address": null,
+        "Smtp_Port": null,
+        "Receiver": null
+      }
+    }
+  },
+    {
+    "enabled": true,
+    "adddate": "2023-11-17 09:36:51",
+    "enddate": "2024-05-15 09:36:51",
+    "name": "翟公鑫",
+    "phone": "15303959947",
+    "password": "zhai2216",
+    "deviceId": "Xiaomi|M2102K1C|13",
+    "dToken": "uhcknd3wf028ytrva15bjesp7g6oqxlzmi49",
+    "modify_coordinates": true,
+    "address": "河南省濮阳市清丰县巩营乡库家全羊汤",
+    "longitude": "115.332428",
+    "latitude": "35.981663",
+    "pushmode": "2",
+    "pushdata": {
+      "Ding": {
+        "Secret": null,
+        "Token": null
+      },
+      "PushPlus": {
+        "Token": "503c6ccb4a224710a96129309ee620ab"
+      },
+      "Server_Turbo": {
+        "Token": null
+      },
+      "Email": {
+        "Send": null,
+        "Password": null,
+        "Server_Address": null,
+        "Smtp_Port": null,
+        "Receiver": null
+      }
+    }
   }
+  
 ]
