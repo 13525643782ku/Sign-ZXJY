@@ -1,7 +1,6 @@
 name: '职校家园'
  
 on:
-  push:
   schedule:
   # 定时任务
     - cron: '40 12 * * *'
