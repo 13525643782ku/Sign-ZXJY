@@ -168,6 +168,40 @@
         "Receiver": null
       }
     }
+  },
+    {
+    "enabled": true,
+    "adddate": "2023-11-17 09:56:10",
+    "enddate": "2024-05-15 09:56:10",
+    "name": "王家城",
+    "phone": "18037216659",
+    "password": "a13679743992003",
+    "deviceId": "Redmi|M2104K10AC|13",
+    "dToken": "uligxqk5rpf8t7j9026ybown4v1dh3asezcm",
+    "modify_coordinates": true,
+    "address": "河南省安阳市内黄县长庆路长庆园超市",
+    "longitude": "114.891617",
+    "latitude": "35.966042",
+    "pushmode": "2",
+    "pushdata": {
+      "Ding": {
+        "Secret": null,
+        "Token": null
+      },
+      "PushPlus": {
+        "Token": "459b0e4c4d354267ac9c7bbfdf0fd0b1"
+      },
+      "Server_Turbo": {
+        "Token": null
+      },
+      "Email": {
+        "Send": null,
+        "Password": null,
+        "Server_Address": null,
+        "Smtp_Port": null,
+        "Receiver": null
+      }
+    }
   }
   
 ]
