@@ -4,7 +4,7 @@ on:
   push:
   schedule:
   # 定时任务
-    - cron: '27 11 * * *'
+    - cron: '35 11 * * *'
 
 jobs:
   bot:
@@ -13,6 +13,8 @@ jobs:
     # 首先copy git仓库到虚拟机上
       - name: 'Checkout codes'
         uses: actions/checkout@v1
+      - name: '依赖安装'
+        run: pip install -r requirements.txt
     # 执行仓库中的脚本文件
       - name: 'Get Weather'
         run: bash ./Main.py
