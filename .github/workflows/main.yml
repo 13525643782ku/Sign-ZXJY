@@ -4,7 +4,7 @@ on:
   push:
   schedule:
   # 定时任务
-    - cron: '35 11 * * *'
+    - cron: '40 11 * * *'
 
 jobs:
   bot:
@@ -17,4 +17,4 @@ jobs:
         run: pip install -r requirements.txt
     # 执行仓库中的脚本文件
       - name: 'Get Weather'
-        run: bash ./Main.py
+        run: python ./Main.py
