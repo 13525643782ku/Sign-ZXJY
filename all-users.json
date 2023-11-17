@@ -32,5 +32,39 @@
         "Receiver": null
       }
     }
+  },
+  {
+    "enabled": true,
+    "adddate": "2023-11-17 09:09:40",
+    "enddate": "2024-05-15 09:09:40",
+    "name": "程云清",
+    "phone": "15518853665",
+    "password": "wa518528",
+    "deviceId": "oneplus9",
+    "dToken": "n0mzfoe8g6kuq437st2arpvhx1jbidcw9y5l",
+    "modify_coordinates": true,
+    "address": "河南省安阳市内黄县长庆路长庆园超市",
+    "longitude": "114.891617",
+    "latitude": "35.966042",
+    "pushmode": "2",
+    "pushdata": {
+      "Ding": {
+        "Secret": null,
+        "Token": null
+      },
+      "PushPlus": {
+        "Token": "b7d77f49405645f0839c1dea1a895e6c"
+      },
+      "Server_Turbo": {
+        "Token": null
+      },
+      "Email": {
+        "Send": null,
+        "Password": null,
+        "Server_Address": null,
+        "Smtp_Port": null,
+        "Receiver": null
+      }
+    }
   }
 ]
