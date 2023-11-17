@@ -202,6 +202,40 @@
         "Receiver": null
       }
     }
+  },
+  {
+    "enabled": true,
+    "adddate": "2023-11-17 11:59:50",
+    "enddate": "2024-05-15 11:59:50",
+    "name": "郭齐",
+    "phone": "18939178490",
+    "password": "gq030718...",
+    "deviceId": "Redmi|M2104K10AC|13",
+    "dToken": "1bmnosdhft73cjzvpqu29e68kwilra5xg0y4",
+    "modify_coordinates": true,
+    "address": "河南省安阳市内黄县长庆路长庆园超市",
+    "longitude": "114.891617",
+    "latitude": "35.966042",
+    "pushmode": "2",
+    "pushdata": {
+      "Ding": {
+        "Secret": null,
+        "Token": null
+      },
+      "PushPlus": {
+        "Token": "effbad6ccfdc441392b37071478a7124"
+      },
+      "Server_Turbo": {
+        "Token": null
+      },
+      "Email": {
+        "Send": null,
+        "Password": null,
+        "Server_Address": null,
+        "Smtp_Port": null,
+        "Receiver": null
+      }
+    }
   }
   
 ]
