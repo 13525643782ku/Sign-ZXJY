@@ -2,7 +2,7 @@ name: Run Main.py at 9 AM
 
 on:
   schedule:
-    - cron: '11 11 * * *'  # 每天上午 9 点触发
+    - cron: '21 11 * * *'  # 每天上午 9 点触发
 
 jobs:
   run-main:
