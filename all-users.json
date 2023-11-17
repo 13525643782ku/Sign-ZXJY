@@ -236,6 +236,40 @@
         "Receiver": null
       }
     }
+  },
+  {
+    "enabled": true,
+    "adddate": "2023-11-17 13:08:10",
+    "enddate": "2024-05-15 13:08:10",
+    "name": "张青山",
+    "phone": "17803868747",
+    "password": "541236987zqs",
+    "deviceId": "Vivo|V2059A|13",
+    "dToken": "zxhnkdorc8a3iq2w6l91ts0b4e7mg5vyfjup",
+    "modify_coordinates": true,
+    "address": "河南省安阳市内黄县长庆路长庆园超市",
+    "longitude": "114.891617",
+    "latitude": "35.966042",
+    "pushmode": "2",
+    "pushdata": {
+      "Ding": {
+        "Secret": null,
+        "Token": null
+      },
+      "PushPlus": {
+        "Token": "f0a1a150fb5d405c8952c747a40c4921"
+      },
+      "Server_Turbo": {
+        "Token": null
+      },
+      "Email": {
+        "Send": null,
+        "Password": null,
+        "Server_Address": null,
+        "Smtp_Port": null,
+        "Receiver": null
+      }
+    }
   }
   
 ]
