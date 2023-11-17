@@ -95,7 +95,7 @@ class MessagePush:
                     feedback = title + "\n" + content
                     return feedback
             else:
-                 if pushdata['PushPlus']['Token'] is not None:
+                if pushdata['PushPlus']['Token'] is not None:
                     feedback = pushinfo.PushPlus(token=pushdata['PushPlus']['Token'], title=title, content=content)
                 else:
                     feedback = pushinfo.PushPlus(token=config.PushPlusToken, title=title, content=content)
