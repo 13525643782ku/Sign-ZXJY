@@ -17,7 +17,7 @@ email_port = ""
 time = "07"
 '''随机时间'''
 # 范围
-range_time = (400, 800)
+range_time = (30, 100)
 '''腾讯地图api密钥，获取地址经纬度需要'''
 # 第三方公开，不保证稳定性
 api_token = "UGMBZ-CINWR-DDRW5-W52AK-D3ENK-ZEBRC"
