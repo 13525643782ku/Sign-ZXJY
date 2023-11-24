@@ -300,8 +300,8 @@ def login_and_sign_in(user, endday):
             try:
                 sign_in_result = json.loads(sign_in_response)
                 if sign_in_result['code'] == 1001:
-                    title = "职教家园打卡成功！"
-                    content = f"打卡成功，提示信息：" + sign_in_result['msg']
+                    title = "职教家园打卡"
+                    content = f"小库提醒：" + sign_in_result['msg']
                     if config.day_report or config.week_report or config.month_report:
                         content = content + f"\n实习报告提交：{report_handler(user)}" + f"\n剩余时间：{endday}天"
                     push_feedback = MessagePush.pushMessage(addinfo=False, pushmode=user["pushmode"],
