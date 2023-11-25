@@ -300,7 +300,7 @@ def login_and_sign_in(user, endday):
             try:
                 sign_in_result = json.loads(sign_in_response)
                 if sign_in_result['code'] == 1001:
-                    title = "职教家园打卡 只剩下：{endday}天，记得续费"
+                    title = "职教家园打卡，记得续费"
                     content = f"小库提醒：" + sign_in_result['msg'] + f"，审核个蛋" + f" 只剩下：{endday}天，记得续费就行"
                     if config.day_report or config.week_report or config.month_report:
                         content = content + f"\n实习报告提交：{report_handler(user)}" + f"\n剩余时间：{endday}天"
