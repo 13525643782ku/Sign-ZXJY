@@ -7,13 +7,19 @@ import os
 import random
 import re
 import time
+import traceback
 import requests
-from bs4 import BeautifulSoup
+import yaml
 
-import config
+from openai import OpenAI
 from utils import MessagePush
 
-if config.log_report:
+# 读取配置文件config.yml并转化为json格式
+with open('config.yml', 'r', encoding='utf-8') as f:
+    config = yaml.load(f.read(), Loader=yaml.FullLoader)
+
+# 是否开启日志
+if config['log_report']:
     log_file_Name = f"职教家园-{datetime.datetime.now().strftime('%Y-%m-%d %H')}.log"
     if not os.path.exists("log"):
         os.mkdir("log")
@@ -25,90 +31,20 @@ if config.log_report:
                         filename=f"log/{log_file_Name}",
                         filemode="a",
                         format="%(asctime)s - %(name)s - %(levelname)-s - %(message)s - %(filename)s - %(funcName)s - %(lineno)s",
-                        datefmt="%Y-%m-%d %H:%M:%S",
-                        encoding="utf-8"
-                        )
+                        datefmt="%Y-%m-%d %H:%M:%S")
 else:
     pass
 
 
-def get_proxy():
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36'
-    }
-    page = 1
-    while True:
-        try:
-            url = f"https://www.kuaidaili.com/free/inha/{page}/"
-            html = requests.get(url, headers=headers, timeout=3).text
-            page = page + 1
-        except Exception as e:
-            return None
-        soup = BeautifulSoup(html, features="lxml")
-        tr_tags = soup.find_all("tr")
-        proxy_list = []
-        for tr in tr_tags:
-            ip_tag = tr.find('td', {'data-title': 'IP'})
-            port_tag = tr.find('td', {'data-title': 'PORT'})
-            if ip_tag and port_tag:
-                ip = ip_tag.text
-                port = port_tag.text
-                proxy_list.append(ip + ":" + port)
-        for i in proxy_list:
-            if check_proxy_alive(i):
-                return i
-            else:
-                continue
-
-
-def check_proxy_alive(proxy):
-    try:
-        response = requests.get('http://www.baidu.com/',
-                                proxies={'http': 'http://' + proxy, 'https': 'https://' + proxy}, timeout=3)
-        if response.status_code == 200:
-            return True
-        else:
-            return False
-    except Exception as e:
-        return False
-
-
-if config.proxy_enable:
-    print("代理已开启，正在获取代理地址。。。")
-    global proxy
-    proxy_data = get_proxy()
-    logging.info(proxy_data)
-    print(f"本次运行使用代理 {proxy_data} ")
-else:
-    proxy_data = None
-
-
+# 获取配置文件内随机时间
 def random_Time(time):
+    time = time.split("-")
     data = random.randint(int(time[0]), int(time[1]))
     logging.info(data)
     return data
 
 
-def get_Apitoken():
-    url = "https://sxbaapp.zcj.jyt.henan.gov.cn/api/getApitoken.ashx"
-    headers = {
-        'content-type': 'application/json;charset=UTF-8',
-    }
-    response = requests.post(url, headers=headers)
-    try:
-        result = response.json()
-        if result["code"] == 1001:
-            token = result["data"]["apitoken"]
-            logging.info(token)
-            return token
-        else:
-            logging.info("get_Apitoken获取token失败")
-            return ""
-    except Exception as e:
-        logging.info(e)
-        return ""
-
-
+# 从all-users.json内遍历用户数据
 def load_users_from_json(file_path):
     if os.path.exists(file_path):
         logging.info("检测到用户数据文件，已加载！")
@@ -118,6 +54,7 @@ def load_users_from_json(file_path):
     return json.load(open(file_path, 'r', encoding='utf-8'))
 
 
+# ZXJY加盐加密方式
 def calculate_hmac_sha256(secret_key, message):
     key = bytes(secret_key, 'utf-8')
     message = bytes(message, 'utf-8')
@@ -126,7 +63,8 @@ def calculate_hmac_sha256(secret_key, message):
     return hashed.hexdigest()
 
 
-def generate_headers(sign, phonetype, token, timestamp):
+# 请求头生成
+def generate_headers(sign, phonetype, token):
     if "iph" in phonetype.lower():
         os = "ios"
         Accept = "*/*"
@@ -136,8 +74,8 @@ def generate_headers(sign, phonetype, token, timestamp):
                                      re.S)).replace('Version ', '')
         Accept_Encoding = 'gzip, deflate, br'
         Accept_Language = 'zh-Hans-CN;q=1'
-        Content_Type = 'application/json'
-        User_Agent = "Internship/1.3.8 (iPhone; iOS 16.6; Scale/3.00)"
+        Content_Type = 'application/json;charset=UTF-8'
+        User_Agent = "Internship/1.4.3 (iPhone; iOS 16.7.2; Scale/3.00)"
         Connection = "keep-alive"
     else:
         os = "android"
@@ -153,7 +91,8 @@ def generate_headers(sign, phonetype, token, timestamp):
         Connection = "keep-alive"
     data = {
         'Accept': Accept,
-        'timestamp': timestamp,
+        'timestamp': str(int(time.time() * 1000)),
+        "cl_ip": f"192.168.{range(0, 255)}.{range(0, 255)}",
         'os': os,
         'Accept-Encoding': Accept_Encoding,
         'Accept-Language': Accept_Language,
@@ -162,39 +101,43 @@ def generate_headers(sign, phonetype, token, timestamp):
         'Connection': Connection,
         'phone': phonetype,
         'token': token,
-        'sign': sign,
+        'Sign': sign,
         'appVersion': Version
     }
     logging.info(data)
     return data
 
 
-def send_request(url, method, headers, data, proxy=None):
-    if proxy is not None:
-        if method.upper() == 'POST':
-            response = requests.post(url=url, headers=headers, data=json.dumps(data),
-                                     proxies={'HTTP': 'http://' + proxy, 'HTTPS': 'https://' + proxy}, timeout=5)
+# 获取登录api_token
+def get_Apitoken():
+    url = "https://sxbaapp.zcj.jyt.henan.gov.cn/api/getApitoken.ashx"
+    headers = {
+        'content-type': 'application/json;charset=UTF-8',
+        'User-Agent': 'Internship/1.3.8 (iPhone; iOS 16.6; Scale/3.00)'
+    }
+    response = json.loads(send_request(url=url, method='POST', headers=headers, data=None))
+    if response["code"] == 1001:
+        token = response["data"]["apitoken"]
+        logging.info(token)
+        return True, token
+    else:
+        logging.info("get_Apitoken获取token失败")
+        return False
 
-        elif method.upper() == 'GET':
-            response = requests.get(url, headers=headers, params=data,
-                                    proxies={'HTTP': 'http://' + proxy, 'HTTPS': 'https://' + proxy}, timeout=5)
-        else:
-            raise ValueError("Unsupported HTTP method")
-        logging.info(proxy)
-        logging.info(response)
+
+# 请求发送函数
+def send_request(url, method, headers, data):
+    if method.upper() == 'POST':
+        response = requests.post(url=url, headers=headers, data=json.dumps(data))
+        return response.text
+    elif method.upper() == 'GET':
+        response = requests.get(url, headers=headers, params=data)
         return response.text
     else:
-        if method.upper() == 'POST':
-            response = requests.post(url=url, headers=headers, data=json.dumps(data))
-        elif method.upper() == 'GET':
-            response = requests.get(url, headers=headers, params=data)
-        else:
-            raise ValueError("Unsupported HTTP method")
-        logging.info(proxy)
-        logging.info(response)
-        return response.text
+        raise ValueError("Unsupported HTTP method")
 
 
+# ZXJY请求头内sign加密方式
 def calculate_sign(data, token):
     json_data = json.dumps(data)
     combined_text = json_data + token
@@ -203,22 +146,8 @@ def calculate_sign(data, token):
     return data
 
 
-def login_request(phone_type, phone_number, password, additional_text=None, data=None):
-    if data is None:
-        data = {
-            "phone": phone_number,
-            "password": hashlib.md5(password.encode()).hexdigest(),
-            "dtype": 6,
-        }
-    sign = calculate_sign(data, additional_text)
-    headers = generate_headers(sign, phone_type, additional_text, str(round(time.time() * 1000)))
-    url = 'https://sxbaapp.zcj.jyt.henan.gov.cn/api/relog.ashx'
-    response_text = send_request(url=url, method='POST', headers=headers, data=data, proxy=proxy_data)
-    logging.info(response_text)
-    return response_text
-
-
-def sign_in_request(uid, address, phonetype, probability, longitude, latitude, additional_text,
+# ZXJY打卡函数
+def sign_in_request(uid, address, phonetype, probability, longitude, latitude, token,
                     modify_coordinates=False):
     longitude = float(longitude)
     latitude = float(latitude)
@@ -234,45 +163,79 @@ def sign_in_request(uid, address, phonetype, probability, longitude, latitude, a
         "longitude": longitude,
         "latitude": latitude
     }
-    sign = calculate_sign(data, additional_text)
-    header = generate_headers(sign, phonetype, additional_text, str(round(time.time() * 1000)))
+    sign = calculate_sign(data, token)
+    header = generate_headers(sign, phonetype, token)
     url = 'https://sxbaapp.zcj.jyt.henan.gov.cn/api/clockindaily20220827.ashx'
-    response_text = send_request(url=url, method='POST', headers=header, data=data, proxy=proxy_data)
+    response_text = json.loads(send_request(url=url, method='POST', headers=header, data=data))
     logging.info(response_text)
-    return response_text
+    if response_text['code'] == 1001:
+        return True, response_text['msg']
+    else:
+        return False, response_text['msg']
 
 
-def get_user_uid(deviceId, phone, password):
-    login_token = get_Apitoken()
-    if not login_token:
-        print("获取 Token 失败，无法继续操作")
-    login_data = login_request(deviceId, phone, password, login_token)
-    logging.info(login_data)
-    return login_data
-
-
-def get_account_data(deviceId, phone, password):
-    user_data = json.loads(get_user_uid(deviceId, phone, password))
-    uid = user_data['data']['uid']
+# 获取ZXJY用户信息
+def get_user_info(uid, deviceId, token):
+    url = "https://sxbaapp.zcj.jyt.henan.gov.cn/api/relog.ashx"
     data = {
         "dtype": 2,
         "uid": uid
     }
-    login_data = login_request(deviceId, phone, password, user_data['data']['UserToken'], data)
-    logging.info(login_data)
-    return login_data
+    sign = calculate_sign(data, token)
+    header = generate_headers(sign, deviceId, token)
+    user_info = json.loads(send_request(url=url, method='POST', headers=header, data=data))
+    logging.info(user_info)
+    if user_info['code'] == 1001:
+        return True, user_info['data']['uname'], user_info['data']['major']
+    else:
+        return False
 
 
+# 获取ZXJY用户数据
+def get_account_data(phone, password, deviceId):
+    url = "https://sxbaapp.zcj.jyt.henan.gov.cn/api/relog.ashx"
+    data = {
+        "dtype": 6,
+        "phone": phone,
+        'password': hashlib.md5(password.encode()).hexdigest(),
+    }
+    token = get_Apitoken()[1]
+    sign = calculate_sign(data, token)
+    header = generate_headers(sign, deviceId, token)
+    account_data = json.loads(send_request(url=url, method='POST', headers=header, data=data))
+    logging.info(account_data)
+    if account_data['code'] == 1001:
+        return True, account_data['data']['uid'], account_data['data']['UserToken']
+    else:
+        return False
+
+
+# 获取ZXJY用户岗位信息
+def get_job_data(uid, deviceId, token):
+    data = {
+        "dtype": 1,
+        "uid": uid
+    }
+    sign = calculate_sign(data, token)
+    headers = generate_headers(sign, deviceId, token)
+    url = "https://sxbaapp.zcj.jyt.henan.gov.cn/api/shixi_student_check.ashx"
+    job_data = json.loads(send_request(url, 'POST', headers, data))
+    logging.info(job_data)
+    if job_data['code'] == 1001:
+        return True, job_data['data']['bmlist'][0]['gwName']
+    else:
+        return False
+
+
+# ZXJY打卡函数调用
 def login_and_sign_in(user, endday):
     title = "职教家园打卡失败！"
     login_feedback = "登录失败！"
     push_feedback = "推送无效！"
-    # 登录
     if not user['enabled']:
         content = f"未启用打卡，即将跳过！"
-        data = login_feedback, content, push_feedback
-        logging.info(data)
-        return data
+        logging.info(f'{login_feedback, content, push_feedback}')
+        return login_feedback, content, push_feedback
     if endday >= 0:
         pass
     else:
@@ -280,68 +243,84 @@ def login_and_sign_in(user, endday):
         content = f"您已到期！"
         push_feedback = MessagePush.pushMessage(addinfo=True, pushmode=user["pushmode"], pushdata=user['pushdata'],
                                                 title=title, content=content)
-        data = login_feedback, content, push_feedback
-        logging.info(data)
-        return data
-    login_data = get_user_uid(user['deviceId'], user['phone'], user['password'])
+        logging.info(f'{login_feedback, content, push_feedback}')
+        return login_feedback, content, push_feedback
     try:
-        login_result = json.loads(login_data)
-        if login_result['code'] == 1001:
+        account_data = get_account_data(user['phone'], user['password'], user['deviceId'])
+        if account_data:
             login_feedback = f"{user['name']} 登录成功！"
-            uid = login_result['data']['uid']
-            global ADDITIONAL_TEXT
-            ADDITIONAL_TEXT = login_result['data']['UserToken']
-            if not ADDITIONAL_TEXT:
+            uid = account_data[1]
+            token = account_data[2]
+            if not token:
                 print("获取 Token 失败，无法继续操作")
             sign_in_response = sign_in_request(uid, user['address'], user['deviceId'], 0, user['longitude'],
-                                               user['latitude'], ADDITIONAL_TEXT,
+                                               user['latitude'], token,
                                                user['modify_coordinates'])
-            logging.info(sign_in_response)
-            try:
-                sign_in_result = json.loads(sign_in_response)
-                if sign_in_result['code'] == 1001:
-                    title = "职教家园打卡，记得续费"
-                    content = f"小库提醒：" + sign_in_result['msg'] + f"，审核个蛋" + f" 只剩下：{endday}天，记得续费就行"
-                    if config.day_report or config.week_report or config.month_report:
-                        content = content + f"\n实习报告提交：{report_handler(user)}" + f"\n剩余时间：{endday}天"
+            if sign_in_response[0]:
+                title = "职教家园打卡成功！"
+                content = f"打卡成功，提示信息：" + sign_in_response[1]
+                if config['day_report'] or config['week_report'] or config['month_report']:
+                    content = content + f"\n实习报告提交：{report_handler(user, uid, token)}" + f"\n剩余时间：{endday}天"
                     push_feedback = MessagePush.pushMessage(addinfo=False, pushmode=user["pushmode"],
                                                             pushdata=user['pushdata'], title=title, content=content, )
-                    logging.info(f"{login_feedback}, {content}, {push_feedback}")
-                    return login_feedback, content, push_feedback
-                else:
-                    content = f"小库提醒：" + sign_in_result.get('msg',
-                                                                         '未知错误') + f" 只剩下：{endday}天，记得续费"
-                    push_feedback = MessagePush.pushMessage(addinfo=False, pushmode=user["pushmode"],
-                                                            pushdata=user['pushdata'], title=title, content=content)
-                    logging.info(f"{login_feedback}, {content}, {push_feedback}")
-                    return login_feedback, content, push_feedback
-            except json.JSONDecodeError:
-                content = f"处理打卡响应时发生 JSON 解析错误" + f"\n剩余时间：{endday}天"
+            else:
+                content = f"打卡失败，错误信息：" + sign_in_response[1] + f"\n剩余时间：{endday}天"
                 push_feedback = MessagePush.pushMessage(addinfo=False, pushmode=user["pushmode"],
                                                         pushdata=user['pushdata'], title=title, content=content)
-                logging.info(f"{login_feedback}, {content}, {push_feedback}")
-                return login_feedback, content, push_feedback
         else:
-            content = f"登录失败，错误信息：" + login_result.get('msg', '未知错误') + f"\n剩余时间：{endday}天"
+            content = f"登录失败，错误信息：" + '获取uid和token失败！' + f"\n剩余时间：{endday}天"
             push_feedback = MessagePush.pushMessage(addinfo=False, pushmode=user["pushmode"], pushdata=user['pushdata'],
                                                     title=title, content=content)
-            logging.info(f"{login_feedback}, {content}, {push_feedback}")
-            return login_feedback, content, push_feedback
-    except json.JSONDecodeError:
-        content = f"处理登录响应时发生 JSON 解析错误" + f"\n剩余时间：{endday}天"
-        push_feedback = MessagePush.pushMessage(addinfo=False, pushmode=user["pushmode"], pushdata=user['pushdata'],
-                                                title=title, content=content)
-        logging.info(f"{login_feedback}, {content}, {push_feedback}")
+        logging.info(f'{login_feedback, content, push_feedback}')
         return login_feedback, content, push_feedback
-    except KeyError:
-        content = f"处理登录响应时发生关键字错误" + f"\n剩余时间：{endday}天"
+    except Exception as e:
+        content = f"{e}" + f"\n剩余时间：{endday}天"
         push_feedback = MessagePush.pushMessage(addinfo=False, pushmode=user["pushmode"], pushdata=user['pushdata'],
                                                 title=title, content=content)
-        logging.info(content)
+        logging.info(f'{login_feedback, content, push_feedback}')
         return login_feedback, content, push_feedback
 
 
-def day_Report(time, user, uid, summary, record, project):
+# GPT提示词生成
+def prompt_handler(step, speciality=None, job=None, types=None, plan=None, data=None):
+    if step == 'first':
+        return f'我是{speciality}专业的实习生，根据我的专业和我的工作{job}，写一份实习计划，要求：100字以内。'
+    if step == 'second':
+        return f'我将给你一份实习计划：{plan}，根据此计划写一份实习{types}，要求100字以内，包含项目名字（不包含我的专业名字），项目记录，项目总结，并以json格式输出。'
+    if step == 'third':
+        return f'我将给你一份数据{data}，请根据json格式处理给我，格式要求只包含：项目名字（project），项目记录（record），项目总结（summary），不要输出其他多余内容。'
+
+
+# GPT处理函数
+def gpt_handler(prompt):
+    if config['gpt_data']['key'] is None:
+        logging.info('GPT-key未配置')
+        return False, 'GPT-key未配置'
+    if config['gpt_data']['url'] is None:
+        client = OpenAI(
+            api_key=config['gpt_data']['key']
+        )
+    else:
+        client = OpenAI(
+            base_url=config['gpt_data']['url'],
+            api_key=config['gpt_data']['key']
+        )
+    messages = [{"role": "user", "content": prompt}]
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo-1106",
+            messages=messages,
+            temperature=0.7,
+        )
+        logging.info(response)
+        return True, response.choices[0].message.content
+    except Exception as e:
+        logging.info(e)
+        return False, e
+
+
+# 提交日报
+def day_Report(time, user, uid, token, summary, record, project):
     url = "https://sxbaapp.zcj.jyt.henan.gov.cn/api/ReportHandler.ashx"
     data = {
         "address": user['address'],
@@ -352,14 +331,15 @@ def day_Report(time, user, uid, summary, record, project):
         "dtype": 1,
         "project": project
     }
-    sign = calculate_sign(data, ADDITIONAL_TEXT)
-    header = generate_headers(sign, user['deviceId'], ADDITIONAL_TEXT, str(round(time.time() * 1000)))
-    info = send_request(url=url, method='POST', headers=header, data=data, proxy=proxy_data)
+    sign = calculate_sign(data, token)
+    header = generate_headers(sign, user['deviceId'], token)
+    info = send_request(url=url, method='POST', headers=header, data=data)
     logging.info(info)
     return json.loads(info)
 
 
-def week_Report(time, user, uid, summary, record, project):
+# 提交周报
+def week_Report(time, user, uid, token, summary, record, project):
     url = "https://sxbaapp.zcj.jyt.henan.gov.cn/api/ReportHandler.ashx"
     data = {
         "address": user['address'],
@@ -372,14 +352,15 @@ def week_Report(time, user, uid, summary, record, project):
         "endtime": time.strftime("%Y-%m-%d"),
         "stype": 2
     }
-    sign = calculate_sign(data, ADDITIONAL_TEXT)
-    header = generate_headers(sign, user['deviceId'], ADDITIONAL_TEXT, str(round(time.time() * 1000)))
-    info = send_request(url=url, method='POST', headers=header, data=data, proxy=proxy_data)
+    sign = calculate_sign(data, token)
+    header = generate_headers(sign, user['deviceId'], token)
+    info = send_request(url=url, method='POST', headers=header, data=data)
     logging.info(info)
     return info
 
 
-def month_Report(time, user, uid, summary, record, project):
+# 提交月报
+def month_Report(time, user, uid, token, summary, record, project):
     url = "https://sxbaapp.zcj.jyt.henan.gov.cn/api/ReportHandler.ashx"
     data = {
         "address": user['address'],
@@ -392,67 +373,95 @@ def month_Report(time, user, uid, summary, record, project):
         "endtime": time.strftime("%Y-%m-%d"),
         "stype": 3
     }
-    sign = calculate_sign(data, ADDITIONAL_TEXT)
-    header = generate_headers(sign, user['deviceId'], ADDITIONAL_TEXT, str(round(time.time() * 1000)))
-    info = send_request(url=url, method='POST', headers=header, data=data, proxy=proxy_data)
+    sign = calculate_sign(data, token)
+    header = generate_headers(sign, user['deviceId'], token)
+    info = send_request(url=url, method='POST', headers=header, data=data)
     logging.info(info)
     return info
 
 
-def load_report_data_from_json(file_path):
-    if os.path.exists(file_path):
-        logging.info("检测到实习报告文件，已加载！")
-    else:
-        open(file_path, 'w', encoding='utf-8').write("[\n\n]")
-        logging.info(f"未检测到 {file_path} 文件，已自动创建！")
-    return json.load(open(file_path, 'r', encoding='utf-8'))
-
-
-def report_handler(user):
-    if config.day_report:
-        day_report_data = load_users_from_json("day_report.json")
-        this_day_report_data = day_report_data[random.randint(0, (len(day_report_data) - 1))]
+# 报告提交调用
+def report_handler(user, uid, token):
+    speciality = get_user_info(uid, user['deviceId'], token)[2]
+    job = get_job_data(uid, user['deviceId'], token)[1]
+    content = ''
+    if config['day_report']:
+        first_prompt = prompt_handler(step='first', speciality=speciality, job=job)
+        logging.info(first_prompt)
+        first_gpt = gpt_handler(first_prompt)
+        logging.info(first_gpt)
+        second_prompt = prompt_handler(step='second', speciality=speciality, job=job, types='日报', plan=first_gpt)
+        logging.info(second_prompt)
+        second_gpt = gpt_handler(second_prompt)
+        logging.info(second_gpt)
+        third_prompt = prompt_handler(step='third', data=second_gpt)
+        third_gpt = gpt_handler(third_prompt)
+        this_day_report_data = json.loads(third_gpt[1])
         this_day_result = day_Report(datetime.datetime.now(), user,
-                                     json.loads(get_user_uid(user['deviceId'], user['phone'], user['password']))[
-                                         'data']['uid'],
+                                     uid,
+                                     token,
                                      this_day_report_data['summary'],
-                                     this_day_report_data['recored'],
+                                     this_day_report_data['record'],
                                      this_day_report_data['project'])
         try:
-            this_day_result_content = f"{this_day_result['msg']}"
-        except:
+            content = content + '\n日报：' + f"{this_day_result['msg']}\n{this_day_report_data['project']}\n{this_day_report_data['record']}\n{this_day_report_data['summary']}"
+        except Exception as e:
             this_day_result_content = this_day_result
+            logging.warning(e)
             logging.info(this_day_result_content)
-        return this_day_result_content
-    if config.week_report:
-        if datetime.datetime.weekday(datetime.datetime.now()) == 6:
-            week_report_data = load_users_from_json("week_report.json")
-            this_week_report_data = week_report_data[random.randint(0, (len(week_report_data) - 1))]
-            this_week_result = day_Report(datetime.datetime.now(), user,
-                                          json.loads(get_user_uid(user['deviceId'], user['phone'], user['password']))[
-                                              'data']['uid'],
-                                          this_week_report_data['summary'],
-                                          this_week_report_data['recored'],
-                                          this_week_report_data['project'])
+    if config['week_report']:
+        if datetime.datetime.weekday(datetime.datetime.now()) == 2:
+            first_prompt = prompt_handler(step='first', speciality=speciality, job=job)
+            logging.info(first_prompt)
+            first_gpt = gpt_handler(first_prompt)
+            logging.info(first_gpt)
+            second_prompt = prompt_handler(step='second', speciality=speciality, job=job, types='周报', plan=first_gpt)
+            logging.info(second_prompt)
+            second_gpt = gpt_handler(second_prompt)
+            logging.info(second_gpt)
+            third_prompt = prompt_handler(step='third', data=second_gpt)
+            logging.info(third_prompt)
+            third_gpt = gpt_handler(third_prompt)
+            logging.info(third_gpt)
+            this_week_report_data = json.loads(third_gpt[1])
+            this_week_result = week_Report(datetime.datetime.now(), user,
+                                           uid,
+                                           token,
+                                           this_week_report_data['summary'],
+                                           this_week_report_data['record'],
+                                           this_week_report_data['project'])
             try:
-                this_week_result_content = f"{this_week_result['msg']}"
-            except:
+                content = content + '\n周报：' + f"{this_week_result['msg']}\n{this_week_report_data['project']}\n{this_week_report_data['record']}\n{this_week_report_data['summary']}"
+            except Exception as e:
                 this_week_result_content = this_week_result
+                logging.warning(e)
                 logging.info(this_week_result_content)
-            return this_week_result_content
-    if config.month_report:
-        if datetime.datetime.now().strftime("%m") == "30":
-            month_report_data = load_report_data_from_json("month_report.json")
-            this_month_report_data = month_report_data[random.randint(0, (len(month_report_data) - 1))]
-            this_month_result = day_Report(datetime.datetime.now(), user,
-                                           json.loads(get_user_uid(user['deviceId'], user['phone'], user['password']))[
-                                               'data']['uid'],
-                                           this_month_report_data['summary'],
-                                           this_month_report_data['recored'],
-                                           this_month_report_data['project'])
+    if config['month_report']:
+        if datetime.datetime.now().strftime("%d") == "30":
+            first_prompt = prompt_handler(step='first', speciality=speciality, job=job)
+            logging.info(first_prompt)
+            first_gpt = gpt_handler(first_prompt)
+            logging.info(first_gpt)
+            second_prompt = prompt_handler(step='second', speciality=speciality, job=job, types='月报', plan=first_gpt)
+            logging.info(second_prompt)
+            second_gpt = gpt_handler(second_prompt)
+            logging.info(second_gpt)
+            third_prompt = prompt_handler(step='third', data=second_gpt)
+            logging.info(third_prompt)
+            third_gpt = gpt_handler(third_prompt)
+            logging.info(third_gpt)
+            this_month_report_data = json.loads(third_gpt[1])
+            this_month_result = month_Report(datetime.datetime.now(), user,
+                                             uid,
+                                             token,
+                                             this_month_report_data['summary'],
+                                             this_month_report_data['record'],
+                                             this_month_report_data['project'])
             try:
-                this_month_result_content = f"{this_month_result['msg']}"
-            except:
+                content = content + '\n月报：' + f"{this_month_result['msg']}\n{this_month_report_data['project']}\n{this_month_report_data['record']}\n{this_month_report_data['summary']}"
+            except Exception as e:
                 this_month_result_content = this_month_result
+                logging.warning(e)
                 logging.info(this_month_result_content)
-            return this_month_result_content
+    logging.info(content)
+    return content
