@@ -1,18 +1,7 @@
-import datetime as datetime
-import json
-import os
-import random
 import string
-import time
 import urllib
 
-import requests
-
-import config
-from process import get_account_data
-from utils import MessagePush
-
-pwd = os.path.dirname(os.path.abspath(__file__)) + os.sep
+from process import *
 
 
 def write_user(filename, newdata):
@@ -25,7 +14,7 @@ def write_user(filename, newdata):
 
 
 def obtain_coordinates(address):
-    url = f"https://apis.map.qq.com/jsapi?qt=geoc&addr={urllib.parse.quote(address)}&key={config.api_token}&output=jsonp&pf=jsapi&ref=jsapi&cb=qq.maps._svcb3.geocoder0"
+    url = f"https://apis.map.qq.com/jsapi?qt=geoc&addr={urllib.parse.quote(address)}&key={config['api_token']}&output=jsonp&pf=jsapi&ref=jsapi&cb=qq.maps._svcb3.geocoder0"
     re = requests.get(url=url).text.strip("qq.maps._svcb3.geocoder0(").strip(")")
     re = json.loads(re)
     return re['detail']['pointx'] + "@" + re['detail']['pointy']
@@ -121,7 +110,7 @@ if __name__ == '__main__':
     PushPlus_token = ""
     # 推送方式为4时生效
     Server_Turbo_token = ""
-    # 推送方式为4且config.py里未配置全局邮箱时生效
+    # 推送方式为4且config.yml里未配置全局邮箱时生效
     email_username = "@"
     email_password = ""
     email_address = ""
@@ -130,7 +119,10 @@ if __name__ == '__main__':
     email_receiver = "@"
     '''以下为屎山，无需管'''
     if name == "":
-        name = json.loads(get_account_data(device, phone, password))['data']['uname']
+        account_data = get_account_data(phone, password, device)
+        uid = account_data[1]
+        token = account_data[2]
+        name = json.loads(get_user_info(uid, device, token)['data']['uname'][1])
     now_localtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     if pushmode == "1":
         userdata = checkUserData(filename=filename, enabled=enabled, day=day, name=name, phone=phone, password=password,
@@ -151,7 +143,7 @@ if __name__ == '__main__':
                                  Server_Turbo_token=Server_Turbo_token)
         pushmode = "Server酱"
     elif pushmode == "4":
-        if config.email_username or config.email_password or config.email_address or config.email_port == "":
+        if config['push-data']['Email']['email_password'] == "":
             userdata = checkUserData(filename=filename, enabled=enabled, day=day, name=name, phone=phone,
                                      password=password,
                                      device=device, modify_coordinates=modify_coordinates, address=address,
