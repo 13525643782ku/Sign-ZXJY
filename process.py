@@ -11,7 +11,7 @@ import traceback
 import requests
 import yaml
 
-from openai import OpenAI
+# from openai import OpenAI
 from utils import MessagePush
 
 # 读取配置文件config.yml并转化为json格式
