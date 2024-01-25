@@ -1,19 +1,8 @@
-import datetime as datetime
-import json
-import os
-import random
-import re
 import string
-import time
 import urllib
 
-import requests
-
-import config
-from process import get_account_data
+from process import *
 from utils import MessagePush
-
-pwd = os.path.dirname(os.path.abspath(__file__)) + os.sep
 
 
 def write_user(filename, newdata):
@@ -26,7 +15,7 @@ def write_user(filename, newdata):
 
 
 def obtain_coordinates(address):
-    url = f"https://apis.map.qq.com/jsapi?qt=geoc&addr={urllib.parse.quote(address)}&key={config.api_token}&output=jsonp&pf=jsapi&ref=jsapi&cb=qq.maps._svcb3.geocoder0"
+    url = f"https://apis.map.qq.com/jsapi?qt=geoc&addr={urllib.parse.quote(address)}&key={config['api_token']}&output=jsonp&pf=jsapi&ref=jsapi&cb=qq.maps._svcb3.geocoder0"
     re = requests.get(url=url).text.strip("qq.maps._svcb3.geocoder0(").strip(")")
     re = json.loads(re)
     return re['detail']['pointx'] + "@" + re['detail']['pointy']
@@ -87,8 +76,8 @@ def checkUserData(filename, enabled, day, name, phone, password, device, modify_
     if "失败" in pushFeedback:
         feedback = "写入失败！原因：无法推送至指定的方式！"
     elif "成功" in pushFeedback:
-        feedback = "写入成功！"
         write_user(filename=filename, newdata=newdata)
+        feedback = "写入成功！"
     else:
         feedback = "写入失败！原因未知！"
     return newdata, pushFeedback, feedback
@@ -128,7 +117,10 @@ if __name__ == '__main__':
             print(f"\033[31m两次密码不一致！\033[0m")
     name = input("输入备注：（默认为职校家园姓名）")
     if name == "":
-        name = json.loads(get_account_data(device, phone, password))['data']['uname']
+        account_data = get_account_data(phone, password, device)
+        uid = account_data[1]
+        token = account_data[2]
+        name = json.loads(get_user_info(uid, device, token)['data']['uname'][1])
     # 随机定位（经纬度最后一位随机）
     modify_coordinates = input("开启随机最后一位坐标y or n（默认y）：")
     if modify_coordinates == "y":
@@ -141,7 +133,7 @@ if __name__ == '__main__':
     address = input("输入打卡地址：")
     # 推送方式
     pushmode = input("输入信息推送方式（默认控制台打印）：")
-    if "1" and "2" and "3" and "4" not in pushmode:
+    if pushmode not in "1234":
         pushmode = None
         print(f"\033[33m输入无效，已设置默认！\033[0m")
     if pushmode == "1":
@@ -167,34 +159,22 @@ if __name__ == '__main__':
                                  Server_Turbo_token=Server_Turbo_token)
         pushmode = "Server酱"
     elif pushmode == "4":
-        if config.email_username or config.email_password or config.email_address or config.email_port == "":
-            email_username = input("输入邮箱服务用户名（留空则全局推送信息生效）：")
-            email_password = input("输入邮箱服务密码（留空则全局推送信息生效）：")
-            email_address = input("输入邮箱服务地址（留空则全局推送信息生效）：")
-            email_port = input("输入邮箱服务端口（留空则全局推送信息生效）：")
-            while True:
-                email_receiver = input("收入接收邮件地址（设置邮件推送时，此项必填）：")
-                if "@" not in email_receiver:
-                    pass
-                else:
-                    break
-
-            userdata = checkUserData(filename=filename, enabled=enabled, day=day, name=name, phone=phone,
-                                     password=password,
-                                     device=device, modify_coordinates=modify_coordinates, address=address,
-                                     pushmode=pushmode,
-                                     email_username=email_username, email_password=email_password,
-                                     email_address=email_address,
-                                     email_port=email_port, email_receiver=email_receiver)
-            pushmode = "一对一邮件推送"
-        else:
-            email_receiver = input("收入接收邮件地址：")
-            userdata = checkUserData(filename=filename, enabled=enabled, day=day, name=name, phone=phone,
-                                     password=password,
-                                     device=device, modify_coordinates=modify_coordinates, address=address,
-                                     pushmode=pushmode,
-                                     email_receiver=email_receiver)
-            pushmode = "一对多邮件推送"
+        email_username = input("输入邮箱服务用户名（留空则全局推送信息生效）：")
+        email_password = input("输入邮箱服务密码（留空则全局推送信息生效）：")
+        email_address = input("输入邮箱服务地址（留空则全局推送信息生效）：")
+        email_port = input("输入邮箱服务端口（留空则全局推送信息生效）：")
+        while True:
+            email_receiver = input("收入接收邮件地址（设置邮件推送时，此项必填）：")
+            if "@" not in email_receiver:
+                print("\033[31m邮件格式不正确！\033[0m")
+                pass
+            else:
+                break
+        userdata = checkUserData(filename=filename, enabled=enabled, day=day, name=name, phone=phone, password=password,
+                                 device=device, modify_coordinates=modify_coordinates, address=address,
+                                 pushmode=pushmode,
+                                 email_username=email_username, email_password=email_password, email_address=email_address, email_port=email_port, email_receiver=email_receiver)
+        pushmode = "邮件推送"
     else:
         userdata = checkUserData(filename=filename, enabled=enabled, day=day, name=name, phone=phone, password=password,
                                  device=device, modify_coordinates=modify_coordinates, address=address,
@@ -207,3 +187,4 @@ if __name__ == '__main__':
         print("\033[32m写入成功！\033[0m")
     else:
         print(f"\033[31m{userdata[2]}\033[0m")
+    input("按任意键退出...")
